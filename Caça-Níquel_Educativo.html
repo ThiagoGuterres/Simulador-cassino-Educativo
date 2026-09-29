@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caça-Níquel Educativo: A Armadilha do Algoritmo</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        casino: {
+                            gold: '#fbbf24',
+                            goldDark: '#b45309',
+                            red: '#ef4444',
+                            purple: '#8b5cf6',
+                            darkBg: '#090d16',
+                            cardBg: '#111827',
+                            border: '#1f2937'
+                        }
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-short': 'bounce 0.6s infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;600;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #070a12;
+            color: #f3f4f6;
+        }
+
+        .font-game {
+            font-family: 'Fredoka', cursive, sans-serif;
+        }
+
+        /* Slot Machine Visual styling */
+        .slot-window {
+            background: linear-gradient(180deg, #05070c 0%, #111827 50%, #05070c 100%);
+            box-shadow: inset 0 0 25px rgba(0,0,0,0.9);
+        }
+
+        .reel-column {
+            perspective: 1000px;
+            overflow: hidden;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #334155;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+        }
+
+        .symbol-card {
+            font-size: 3.5rem;
+            line-height: 1;
+            user-select: none;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+            transition: transform 0.1s ease-out;
+        }
+
+        .spinning {
+            filter: blur(4px);
+            transform: scaleY(1.1);
+        }
+
+        .win-glow {
+            box-shadow: 0 0 30px rgba(250, 204, 21, 0.6), inset 0 0 15px rgba(250, 204, 21, 0.4);
+            border-color: #facc15 !important;
+        }
+
+        .near-miss-glow {
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.6), inset 0 0 15px rgba(239, 68, 68, 0.4);
+            border-color: #ef4444 !important;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12 flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-yellow-500/20 border border-yellow-500/40 rounded-xl text-yellow-400">
+                    <i class="fa-solid fa-slot-machine text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black font-game tracking-wide text-white flex items-center gap-2">
+                        🎰 FRUIT BET <span class="text-xs font-semibold px-2 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-full font-sans">Simulador Educativo</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Entenda na prática como o algoritmo do caça-níquel suga o dinheiro do apostador</p>
+                </div>
+            </div>
+
+            <!-- Mode Selector Switcher -->
+            <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button id="btnModeFair" onclick="setMode('fair')" class="px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 bg-slate-800 text-white shadow">
+                    <i class="fa-solid fa-scale-balanced text-blue-400"></i> Modo 1: Jogo Padrão (Margem Fixa)
+                </button>
+                <button id="btnModeAggressive" onclick="setMode('aggressive')" class="px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-robot text-red-400"></i> Modo 2: Script Agressivo (Isca + Armadilha)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow w-full">
+
+        <!-- LEFT COLUMN: The Physical Slot Machine UI -->
+        <div class="lg:col-span-7 flex flex-col items-center">
+            
+            <!-- SLOT MACHINE CASING -->
+            <div id="slotCasing" class="w-full bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 border-4 border-yellow-500/60 rounded-3xl p-4 sm:p-6 shadow-2xl relative transition-all duration-300">
+                
+                <!-- Top Marquee Display -->
+                <div class="bg-slate-950 border-2 border-yellow-500/40 rounded-2xl p-3 mb-4 text-center relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-transparent to-yellow-500/10 animate-pulse"></div>
+                    <span id="marqueeTitle" class="text-xs font-bold uppercase tracking-widest text-yellow-500 block mb-0.5">SISTEMA CASSINO ONLINE</span>
+                    <div id="statusMessage" class="text-lg sm:text-2xl font-black font-game text-white tracking-wide truncate">
+                        PRESSIONE GIRAR PARA APOSTAR (R$ 10)
+                    </div>
+                </div>
+
+                <!-- 3 REELS DISPLAY WINDOW -->
+                <div class="slot-window rounded-2xl p-3 sm:p-5 border-2 border-slate-700 grid grid-cols-3 gap-2 sm:gap-4 mb-6 relative">
+                    
+                    <!-- Payline Indicator Line -->
+                    <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-yellow-400/40 z-10 pointer-events-none flex justify-between items-center px-1">
+                        <div class="w-2 sm:w-3 h-4 bg-yellow-400 rounded-r"></div>
+                        <div class="w-2 sm:w-3 h-4 bg-yellow-400 rounded-l"></div>
+                    </div>
+
+                    <!-- Reel 1 -->
+                    <div class="reel-column h-36 sm:h-44 flex items-center justify-center relative">
+                        <div id="reel1" class="symbol-card font-game flex items-center justify-center">🍊</div>
+                    </div>
+
+                    <!-- Reel 2 -->
+                    <div class="reel-column h-36 sm:h-44 flex items-center justify-center relative">
+                        <div id="reel2" class="symbol-card font-game flex items-center justify-center">🍊</div>
+                    </div>
+
+                    <!-- Reel 3 -->
+                    <div class="reel-column h-36 sm:h-44 flex items-center justify-center relative">
+                        <div id="reel3" class="symbol-card font-game flex items-center justify-center">🍋</div>
+                    </div>
+
+                </div>
+
+                <!-- Near Miss / Psychological Hook Trigger Banner -->
+                <div id="bannerNearMiss" class="hidden mb-4 p-3 bg-red-950/80 border border-red-500/60 rounded-xl text-red-300 text-xs font-semibold flex items-center gap-2 animate-bounce-short">
+                    <i class="fa-solid fa-triangle-exclamation text-red-400 text-lg"></i>
+                    <div>
+                        <strong class="text-white block font-bold text-sm">⚠️️ ALERTA DE GATILHO: QUASE VITÓRIA!</strong>
+                        <span>O jogo mostrou 2 símbolos iguais (🍒🍒) de propósito! Isso engana o cérebro fazendo achar que "estava quase ganhando".</span>
+                    </div>
+                </div>
+
+                <!-- Interactive Control Buttons -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <button id="btnSpin" onclick="spinManual()" class="py-3.5 px-4 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-950 font-black font-game text-lg rounded-2xl border-b-4 border-amber-800 active:border-b-0 active:translate-y-1 transition shadow-lg flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> GIRAR (R$ 10)
+                    </button>
+
+                    <button id="btnAutoSpin" onclick="startAutoSpin(50)" class="py-3.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black font-game text-base rounded-2xl border-b-4 border-indigo-900 active:border-b-0 active:translate-y-1 transition shadow-lg flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bolt text-yellow-300"></i> AUTO 50 GIROS
+                    </button>
+
+                    <button onclick="resetSimulation()" class="py-3.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-2xl border border-slate-700 hover:border-slate-600 transition flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-rotate-left"></i> REINICIAR
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Real-Time Chart Display -->
+            <div class="w-full mt-6 bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-yellow-400"></i> Saldo ao Longo dos Giros (Jogador vs. Casa)
+                    </h3>
+                    <span id="labelTotalSpins" class="text-xs text-slate-400 font-semibold">Giros: 0</span>
+                </div>
+                <div class="h-56 w-full">
+                    <canvas id="slotChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: Dashboard Metrics & Explanations -->
+        <div class="lg:col-span-5 space-y-5">
+            
+            <!-- Dashboard Metrics Grid -->
+            <div class="grid grid-cols-2 gap-3">
+                
+                <!-- Player Balance -->
+                <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-lg">
+                    <span class="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-1">Saldo do Jogador</span>
+                    <div id="metricPlayerBalance" class="text-xl sm:text-2xl font-black text-white">
+                        R$ 200,00
+                    </div>
+                    <span id="metricPlayerDiff" class="text-[11px] text-slate-500 font-medium">Banca inicial: R$ 200</span>
+                </div>
+
+                <!-- House Profit -->
+                <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-lg">
+                    <span class="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-1">Lucro da Casa</span>
+                    <div id="metricHouseProfit" class="text-xl sm:text-2xl font-black text-green-400">
+                        R$ 0,00
+                    </div>
+                    <span class="text-[11px] text-slate-500 font-medium">Retenção retida</span>
+                </div>
+
+                <!-- Current Algorithmic RTP -->
+                <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-lg">
+                    <span class="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-1">RTP do Algoritmo</span>
+                    <div id="metricRTP" class="text-xl sm:text-2xl font-black text-yellow-400">
+                        90%
+                    </div>
+                    <span id="metricRTPTag" class="text-[11px] text-slate-500 font-medium">Retorno Teórico</span>
+                </div>
+
+                <!-- Win/Loss Ratio -->
+                <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-lg">
+                    <span class="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-1">Vitórias / Perdas</span>
+                    <div id="metricWinLoss" class="text-xl sm:text-2xl font-black text-slate-200">
+                        0 / 0
+                    </div>
+                    <span id="metricWinRate" class="text-[11px] text-slate-500 font-medium">Taxa de acerto: 0%</span>
+                </div>
+
+            </div>
+
+            <!-- Mode Details Card -->
+            <div id="boxModeExplanation" class="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-lg text-xs space-y-2">
+                <!-- Dynamically filled with active algorithm explanation -->
+            </div>
+
+            <!-- Educational Breakdown Checklist -->
+            <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl shadow-lg space-y-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <i class="fa-solid fa-graduation-cap text-yellow-400"></i> Por que o Caça-Níquel Vicia e Falha o Apostador?
+                </h3>
+
+                <div class="space-y-2.5 text-xs text-slate-300">
+                    
+                    <div class="flex items-start gap-2.5 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+                        <div class="text-yellow-400 font-bold text-base mt-0.5"><i class="fa-solid fa-fish"></i></div>
+                        <div>
+                            <strong class="text-white block font-semibold mb-0.5">1. A Isca Inicial (Hooking)</strong>
+                            <span>Nas primeiras rodadas, algoritmos agressivos aumentam o RTP para até 95%. O jogador ganha prêmios pequenos e sente que "está com sorte".</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-2.5 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+                        <div class="text-red-400 font-bold text-base mt-0.5"><i class="fa-solid fa-eye"></i></div>
+                        <div>
+                            <strong class="text-white block font-semibold mb-0.5">2. "Quase-Vitória" (Near-Miss Effect)</strong>
+                            <span>Quando sai 🍒 🍒 🍋, a mente interpreta como "quase ganhei!", liberando a mesma dopamina da vitória e forçando mais giros.</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-2.5 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+                        <div class="text-blue-400 font-bold text-base mt-0.5"><i class="fa-solid fa-chart-pie"></i></div>
+                        <div>
+                            <strong class="text-white block font-semibold mb-0.5">3. RTP (Return to Player) Injusto</strong>
+                            <span>O RTP teórico (ex: 90%) garante que de cada R$ 100 apostados, R$ 10 somem para sempre na casa. Conforme você gira 50 ou 100 vezes, o saldo zera.</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Paytable Legend -->
+            <div class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl shadow-lg text-xs">
+                <span class="text-slate-400 font-bold uppercase tracking-wider block mb-2">Tabela de Pagamentos Teórica</span>
+                <div class="grid grid-cols-2 gap-2 text-slate-300">
+                    <div class="bg-slate-950 p-2 rounded-lg flex justify-between items-center">
+                        <span>7️⃣ 7️⃣ 7️⃣ (Jackpot)</span>
+                        <span class="font-bold text-yellow-400">Paga 10x</span>
+                    </div>
+                    <div class="bg-slate-950 p-2 rounded-lg flex justify-between items-center">
+                        <span>💎 💎 💎 (Diamantes)</span>
+                        <span class="font-bold text-yellow-400">Paga 5x</span>
+                    </div>
+                    <div class="bg-slate-950 p-2 rounded-lg flex justify-between items-center">
+                        <span>🔔 🔔 🔔 (Sinos)</span>
+                        <span class="font-bold text-yellow-400">Paga 3x</span>
+                    </div>
+                    <div class="bg-slate-950 p-2 rounded-lg flex justify-between items-center">
+                        <span>🍒 🍒 🍒 / 🍊 🍊 🍊</span>
+                        <span class="font-bold text-yellow-400">Paga 2x</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        // --- GAME & SIMULATION STATE VARIABLES ---
+        const SYMBOLS = ['🍊', '🍋', '🍒', '🍇', '🔔', '7️⃣', '💎'];
+        const BET_AMOUNT = 10;
+        
+        let currentMode = 'fair'; // 'fair' or 'aggressive'
+        let playerBalance = 200;
+        let initialBalance = 200;
+        let houseProfit = 0;
+        let totalSpins = 0;
+        let winCount = 0;
+        let lossCount = 0;
+        
+        let isSpinning = false;
+        let autoSpinInterval = null;
+
+        // Chart Data Tracking
+        let chartLabels = [0];
+        let chartPlayerData = [200];
+        let chartHouseData = [0];
+        let slotChart = null;
+
+        // --- DOM ELEMENTS ---
+        const reel1 = document.getElementById('reel1');
+        const reel2 = document.getElementById('reel2');
+        const reel3 = document.getElementById('reel3');
+        const statusMessage = document.getElementById('statusMessage');
+        const marqueeTitle = document.getElementById('marqueeTitle');
+        const slotCasing = document.getElementById('slotCasing');
+        const bannerNearMiss = document.getElementById('bannerNearMiss');
+        const btnSpin = document.getElementById('btnSpin');
+        const btnAutoSpin = document.getElementById('btnAutoSpin');
+
+        const metricPlayerBalance = document.getElementById('metricPlayerBalance');
+        const metricPlayerDiff = document.getElementById('metricPlayerDiff');
+        const metricHouseProfit = document.getElementById('metricHouseProfit');
+        const metricRTP = document.getElementById('metricRTP');
+        const metricRTPTag = document.getElementById('metricRTPTag');
+        const metricWinLoss = document.getElementById('metricWinLoss');
+        const metricWinRate = document.getElementById('metricWinRate');
+        const labelTotalSpins = document.getElementById('labelTotalSpins');
+
+        const btnModeFair = document.getElementById('btnModeFair');
+        const btnModeAggressive = document.getElementById('btnModeAggressive');
+        const boxModeExplanation = document.getElementById('boxModeExplanation');
+
+        // --- INITIALIZATION ---
+        window.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            updateModeUI();
+            updateMetrics();
+        });
+
+        // --- ALGORITHM MODE SWITCHER ---
+        function setMode(mode) {
+            if (isSpinning) return;
+            currentMode = mode;
+            updateModeUI();
+            resetSimulation();
+        }
+
+        function updateModeUI() {
+            if (currentMode === 'fair') {
+                btnModeFair.className = "px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 bg-slate-800 text-white shadow";
+                btnModeAggressive.className = "px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 text-slate-400 hover:text-white";
+                
+                boxModeExplanation.innerHTML = `
+                    <div class="flex items-center gap-2 font-bold text-blue-400 text-sm">
+                        <i class="fa-solid fa-scale-balanced"></i> Modo 1: Jogo Padrão (Margem Embutida Fixa)
+                    </div>
+                    <p class="text-slate-300">
+                        Neste modo, o jogo opera com probabilidade honesta fixada em <strong>90% de RTP</strong> (Margem da casa de 10%). A perda do jogador acontece de forma regular e matematicamente previsível.
+                    </p>
+                `;
+            } else {
+                btnModeAggressive.className = "px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 bg-red-600 text-white shadow";
+                btnModeFair.className = "px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 text-slate-400 hover:text-white";
+                
+                boxModeExplanation.innerHTML = `
+                    <div class="flex items-center gap-2 font-bold text-red-400 text-sm">
+                        <i class="fa-solid fa-robot"></i> Modo 2: Script Agressivo (Isca + Retenção)
+                    </div>
+                    <p class="text-slate-300">
+                        O algoritmo altera o RTP em tempo real: <br>
+                        • <strong>Giros 1 a 8:</strong> RTP de 95% (Dá prêmios para prender a dopamina).<br>
+                        • <strong>Giros 9+:</strong> RTP cai para 20% + Força o efeito 'Quase-Vitória' (Near Miss).
+                    </p>
+                `;
+            }
+        }
+
+        // --- CALCULATE DYNAMIC RTP BASED ON ACTIVE ALGORITHM ---
+        function getCalculatedRTP() {
+            if (currentMode === 'fair') {
+                return 0.90; // Fixed 90% RTP
+            } else {
+                // Aggressive mode: hook initial spins, then drop drastically
+                if (totalSpins < 8) {
+                    return 0.95; // Initial Hook
+                } else if (totalSpins < 20) {
+                    return 0.45; // Moderate Drain
+                } else {
+                    return 0.20; // Aggressive Extraction
+                }
+            }
+        }
+
+        // --- SPIN ENGINE LOGIC ---
+        function spinManual() {
+            if (isSpinning) return;
+            if (playerBalance < BET_AMOUNT) {
+                alert("O jogador não possui saldo suficiente para apostar!");
+                return;
+            }
+            executeSpin(false);
+        }
+
+        function startAutoSpin(count) {
+            if (isSpinning) return;
+            
+            let currentSpin = 0;
+            btnAutoSpin.disabled = true;
+            btnSpin.disabled = true;
+            btnAutoSpin.classList.add('opacity-50');
+
+            autoSpinInterval = setInterval(() => {
+                if (playerBalance < BET_AMOUNT || currentSpin >= count) {
+                    clearInterval(autoSpinInterval);
+                    btnAutoSpin.disabled = false;
+                    btnSpin.disabled = false;
+                    btnAutoSpin.classList.remove('opacity-50');
+                    return;
+                }
+                executeSpin(true);
+                currentSpin++;
+            }, 120); // Fast automatic spin execution
+        }
+
+        function executeSpin(isFast) {
+            isSpinning = true;
+            totalSpins++;
+            playerBalance -= BET_AMOUNT;
+            houseProfit += BET_AMOUNT;
+
+            bannerNearMiss.classList.add('hidden');
+            slotCasing.classList.remove('win-glow', 'near-miss-glow');
+
+            const currentRTP = getCalculatedRTP();
+
+            // Determine Outcome according to algorithm
+            // Theoretical jackpot multiplier avg = 3x. Prob = currentRTP / 3
+            const winProbability = currentRTP / 3.0;
+            const isWin = Math.random() < winProbability;
+            
+            let symbol1, symbol2, symbol3;
+            let isNearMiss = false;
+            let winMultiplier = 0;
+
+            if (isWin) {
+                // Pick matching symbols
+                const winSymbol = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+                symbol1 = winSymbol;
+                symbol2 = winSymbol;
+                symbol3 = winSymbol;
+
+                if (winSymbol === '7️⃣') winMultiplier = 10;
+                else if (winSymbol === '💎') winMultiplier = 5;
+                else if (winSymbol === '🔔') winMultiplier = 3;
+                else winMultiplier = 2;
+
+                winCount++;
+            } else {
+                lossCount++;
+                // Decide if we force a Near-Miss (🍒 🍒 🍋)
+                const nearMissChance = (currentMode === 'aggressive' && totalSpins >= 8) ? 0.65 : 0.25;
+                
+                if (Math.random() < nearMissChance) {
+                    isNearMiss = true;
+                    const pick = SYMBOLS[Math.floor(Math.random() * (SYMBOLS.length - 1))];
+                    symbol1 = pick;
+                    symbol2 = pick;
+                    // Third symbol is different
+                    let third;
+                    do {
+                        third = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+                    } while (third === pick);
+                    symbol3 = third;
+                } else {
+                    // Completely random distinct symbols
+                    symbol1 = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+                    do {
+                        symbol2 = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+                    } while (symbol2 === symbol1);
+                    do {
+                        symbol3 = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+                    } while (symbol3 === symbol2);
+                }
+            }
+
+            // Visual Reel Spinning Animation Effect
+            if (!isFast) {
+                reel1.classList.add('spinning');
+                reel2.classList.add('spinning');
+                reel3.classList.add('spinning');
+                statusMessage.textContent = "GIRANDO ROLETAS...";
+                statusMessage.className = "text-lg sm:text-2xl font-black font-game text-yellow-400 animate-pulse";
+
+                setTimeout(() => {
+                    reel1.classList.remove('spinning');
+                    reel1.textContent = symbol1;
+                }, 200);
+
+                setTimeout(() => {
+                    reel2.classList.remove('spinning');
+                    reel2.textContent = symbol2;
+                }, 350);
+
+                setTimeout(() => {
+                    reel3.classList.remove('spinning');
+                    reel3.textContent = symbol3;
+
+                    finalizeSpinResult(isWin, winMultiplier, isNearMiss, symbol1);
+                    isSpinning = false;
+                }, 500);
+            } else {
+                // Instant update for auto-spin
+                reel1.textContent = symbol1;
+                reel2.textContent = symbol2;
+                reel3.textContent = symbol3;
+                finalizeSpinResult(isWin, winMultiplier, isNearMiss, symbol1);
+                isSpinning = false;
+            }
+        }
+
+        function finalizeSpinResult(isWin, winMultiplier, isNearMiss, symbol) {
+            if (isWin) {
+                const prize = BET_AMOUNT * winMultiplier;
+                playerBalance += prize;
+                houseProfit -= prize;
+
+                statusMessage.textContent = `🎉 GANHOU R$ ${prize.toFixed(2)}! (${symbol}${symbol}${symbol})`;
+                statusMessage.className = "text-lg sm:text-2xl font-black font-game text-green-400";
+                slotCasing.classList.add('win-glow');
+            } else {
+                if (isNearMiss) {
+                    statusMessage.textContent = "💥 QUASE! SAIU 2 IGUAIS!";
+                    statusMessage.className = "text-lg sm:text-2xl font-black font-game text-red-400";
+                    bannerNearMiss.classList.remove('hidden');
+                    slotCasing.classList.add('near-miss-glow');
+                } else {
+                    statusMessage.textContent = "❌ VOCÊ PERDEU (R$ 10)";
+                    statusMessage.className = "text-lg sm:text-2xl font-black font-game text-slate-400";
+                }
+            }
+
+            // Record data for Chart
+            chartLabels.push(totalSpins);
+            chartPlayerData.push(Math.max(0, playerBalance));
+            chartHouseData.push(houseProfit);
+
+            updateMetrics();
+            updateChart();
+        }
+
+        // --- METRICS & CHART UPDATES ---
+        function updateMetrics() {
+            metricPlayerBalance.textContent = `R$ ${playerBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            metricHouseProfit.textContent = `R$ ${houseProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            labelTotalSpins.textContent = `Giros: ${totalSpins}`;
+
+            const rtpVal = (getCalculatedRTP() * 100).toFixed(0);
+            metricRTP.textContent = `${rtpVal}%`;
+
+            if (currentMode === 'fair') {
+                metricRTPTag.textContent = "Margem Fixa (10%)";
+                metricRTP.className = "text-xl sm:text-2xl font-black text-blue-400";
+            } else {
+                metricRTPTag.textContent = "RTP Manipulado em Tempo Real";
+                if (rtpVal >= 80) metricRTP.className = "text-xl sm:text-2xl font-black text-green-400";
+                else if (rtpVal >= 40) metricRTP.className = "text-xl sm:text-2xl font-black text-yellow-400";
+                else metricRTP.className = "text-xl sm:text-2xl font-black text-red-500 animate-pulse";
+            }
+
+            const diff = playerBalance - initialBalance;
+            if (diff >= 0) {
+                metricPlayerDiff.textContent = `Variação: +R$ ${diff.toFixed(2)}`;
+                metricPlayerDiff.className = "text-[11px] text-green-400 font-bold";
+            } else {
+                metricPlayerDiff.textContent = `Variação: -R$ ${Math.abs(diff).toFixed(2)}`;
+                metricPlayerDiff.className = "text-[11px] text-red-400 font-bold";
+            }
+
+            metricWinLoss.textContent = `${winCount} / ${lossCount}`;
+            const rate = totalSpins > 0 ? ((winCount / totalSpins) * 100).toFixed(1) : 0;
+            metricWinRate.textContent = `Taxa de acerto: ${rate}%`;
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('slotChart').getContext('2d');
+            slotChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [
+                        {
+                            label: 'Saldo do Jogador (R$)',
+                            data: chartPlayerData,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.2,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Lucro da Casa (R$)',
+                            data: chartHouseData,
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.05)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.2,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#cbd5e1', font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            slotChart.data.labels = chartLabels;
+            slotChart.data.datasets[0].data = chartPlayerData;
+            slotChart.data.datasets[1].data = chartHouseData;
+            slotChart.update();
+        }
+
+        function resetSimulation() {
+            if (autoSpinInterval) clearInterval(autoSpinInterval);
+            isSpinning = false;
+            
+            playerBalance = 200;
+            initialBalance = 200;
+            houseProfit = 0;
+            totalSpins = 0;
+            winCount = 0;
+            lossCount = 0;
+
+            chartLabels = [0];
+            chartPlayerData = [200];
+            chartHouseData = [0];
+
+            reel1.textContent = '🍊';
+            reel2.textContent = '🍊';
+            reel3.textContent = '🍋';
+
+            statusMessage.textContent = "PRESSIONE GIRAR PARA APOSTAR (R$ 10)";
+            statusMessage.className = "text-lg sm:text-2xl font-black font-game text-white tracking-wide";
+            bannerNearMiss.classList.add('hidden');
+            slotCasing.classList.remove('win-glow', 'near-miss-glow');
+
+            updateMetrics();
+            updateChart();
+        }
+    </script>
+</body>
+</html>
